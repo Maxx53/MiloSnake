@@ -13,6 +13,13 @@ Simple snake game, created for WinForms using GDI+
 - Поддержка уровней с препятствиями в виде камней.
 - Все ресуры игры вынесены в отдельную папку (data), что позволяет модифицировать игру без пересборки бинарного файла.
 
+###Управление
+- WASD или Стрелки - изменить направление движения змейки;
+- Space (пробел) - ускорение;
+- R (в игре или после смерти) - запуск случайного уровня;
+- Esc (после смерти) - вернуться в главное меню.
+
+
 ###Формат уровня
 Текстовый, 40х30 символов.
 ```
@@ -21,7 +28,7 @@ Simple snake game, created for WinForms using GDI+
 @ - стартовая позиция змейки
 ```
 ###Загрузить
-[MiloSnake.rar](scmbot.ru/uploads/MiloSnake.rar)
+[MiloSnake.rar](https://dl.dropboxusercontent.com/u/1288526/milosnake.rar)
 
 ###Скриншот
-![Gameplay](http://images.illuzor.com/uploads/lev.jpg)
+![Gameplay](http://images.illuzor.com/uploads/chickscr.png)

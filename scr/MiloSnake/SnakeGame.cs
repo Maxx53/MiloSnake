@@ -115,16 +115,18 @@ namespace Maxx53.Games
 
         //Исходные картинки текстур, их изменять не будем
         private static Image appleScr = new Bitmap(texturePath + "apple.png");
-        private static Image rockScr = new Bitmap(texturePath + "rock.png");
         private static Image grassScr = new Bitmap(texturePath + "grass.jpg");
+        private static Image rocks_texture = new Bitmap(texturePath + "rocks.png");
         private static Image snake_texture = new Bitmap(texturePath + "snake_texture.png");
         private static Image chicken_texture = new Bitmap(texturePath + "chicken.png");
 
         //С этими картинками работаем
         private static Image appleImg;
-        private static Image rockImg;
         private static Image grassImg;
         private static Image background;
+
+        //Список рисунков разных камней, для разнообразия
+        private static List<Image> rocksTexList = new List<Image>();
 
         //Список изображений, в котором текстуры змейки.
         //4 разных сегмента, по 4 копии для каждого направления + 4 копии головы для эффекта смерти
@@ -140,14 +142,12 @@ namespace Maxx53.Games
         //Список объектов, камней, сюда загружаются координаты камней из левелов
         private List<GameObject> rocks = new List<GameObject>();
 
+        //Еда для змейки, список яблок и куриц
+        private List<GameObject> apples = new List<GameObject>();
+        private List<GameObject> chickens = new List<GameObject>();
+
         //Список строк, тут храним левелы (расположение камней)
         private static List<string> levels = new List<string>();
-
-        //Еда для змейки, тоже должна иметь координаты на игровом поле, представим точкой.
-        private GameObject apple;
-
-        //Еда для змейки, тоже должна иметь координаты на игровом поле, представим точкой.
-        private GameObject chicken;
 
         //Текущее направление движения, по умолчанию вниз
         private Direction direction = Direction.Down;
@@ -227,6 +227,42 @@ namespace Maxx53.Games
             {
                 gameSpeed = value;
                 gameTimer.Interval = 1000 / gameSpeed;
+            }
+        }
+
+        //Количество яблок на поле
+        private int appleCount = 10;
+        public int AppleCount
+        {
+            get
+            {
+                return appleCount;
+            }
+            //При изменение свойства делаем проверку, ограничиваем максимальное количество
+            set
+            {
+                if (value < 50)
+                    appleCount = value;
+                else
+                    appleCount = 50;
+            }
+        }
+
+        //Количество куриц на поле
+        private int chickCount = 5;
+        public int ChickCount
+        {
+            get
+            {
+                return chickCount;
+            }
+            //При изменение свойства делаем проверку, ограничиваем максимальное количество
+            set
+            {
+                if (value < 50)
+                    chickCount = value;
+                else
+                    chickCount = 50;
             }
         }
 
@@ -373,17 +409,39 @@ namespace Maxx53.Games
 
             //Изменяем размеры текстур в зависимости от размера пикселя
             appleImg = Utils.ResizeImage(appleScr, PixelLen, PixelLen);
-            rockImg = Utils.ResizeImage(rockScr, PixelLen, PixelLen);
             grassImg = Utils.ResizeImage(grassScr, realSize.Width, realSize.Height);
 
             //Для удобства, заранее определяем центр игрового поля
             screenCenter = new Point(realSize.Width / 2, realSize.Height / 2);
+
+            //Загружаем текстуру камней в список
+            LoadRocksTex();
 
             //Загружаем текстуру змеи в список
             LoadSnakeTex();
 
             //Загружаем текстуру курицы в список
             LoadChickenTex();
+        }
+
+        //Дербаним текстуру на 5 частей
+        private void LoadRocksTex()
+        {
+            rocksTexList.Clear();
+
+            var sourceWidth = rocks_texture.Width;
+
+            //В цикле, выполняем 5 раз
+            for (int i = 0; i < 5; i++)
+            {
+                //Определяем область для вырезания, квадрат, в цикле меняется его позиция только по Y
+                Rectangle cropArea = new Rectangle(0, i * sourceWidth, sourceWidth, sourceWidth);
+
+                //Изменяем размер картинки в соответсивии с размером пикселя
+                var source = Utils.ResizeImage(Utils.CropImage(rocks_texture, cropArea), PixelLen, PixelLen);
+                //Добавляем в список
+                rocksTexList.Add(source);
+            }
         }
 
 
@@ -477,6 +535,8 @@ namespace Maxx53.Games
             gameScore = 0;
             //Чистим список от точек
             snake.Clear();
+            apples.Clear();
+            chickens.Clear();
 
             //Загружаем список камней из уровня, добавляем змейку на стартовую позицию
             LoadLevel(levNum);
@@ -485,10 +545,17 @@ namespace Maxx53.Games
             DrawLevel();
 
             //Генерируем еду, точку в случайной позиции в пределах игрового поля 
-            //Яблоко
-            apple = GenerateFood();
-            //Курочка
-            chicken = GenerateFood();
+            //Яблоки
+            for (int i = 0; i < appleCount; i++)
+            {
+                 apples.Add(GenerateFood());
+            }
+
+            //Курочки
+            for (int i = 0; i < ChickCount; i++)
+            {
+                chickens.Add(GenerateFood());
+            }
 
             //Запускаем таймер обновления позиции змейки и курицы
             gameTimer.Start();
@@ -573,7 +640,7 @@ namespace Maxx53.Games
             //Пробегаемся по списку камней и рисуем каждый в своей позиции
             for (int i = 0; i < rocks.Count; i++)
             {
-                g.DrawImage(rockImg, rocks[i].imgPos);
+                g.DrawImage(rocksTexList[random.Next(5)], rocks[i].imgPos);
             }
         }
 
@@ -587,8 +654,12 @@ namespace Maxx53.Games
             //Передвигаем змейку на шаг в один пиксель
             MoveSnake();
 
-            //Передвигаем курочку на шаг в один пиксель
-            MoveChicken();
+            //Пробегаемся по списку куриц
+            for (int i = 0; i < chickens.Count; i++)
+            {
+                //Передвигаем курочку на шаг в один пиксель
+                MoveChicken(chickens[i]);
+            }
 
             //Принудительно перерисовываем холст
             canvas.Invalidate();
@@ -742,34 +813,43 @@ namespace Maxx53.Games
             if (checkRocks(snake[0].Pos))
                 Die();
 
-
-            //Проверяем наличие столкновения с едой
-            if (snake[0].Pos.X == apple.Pos.X && snake[0].Pos.Y == apple.Pos.Y)
+            //Пробегаемся по списку яблок
+            for (int i = 0; i < apples.Count; i++)
             {
-                //Кушаем
-                Eat();
-
-                //Проигрываем звук съеденного яблока
-                PlaySound(appleCrunch);
-
-                //Создаем новый кусок еды
-                apple = GenerateFood();
-            }
-
-            if (snake[0].Pos.X == chicken.Pos.X && snake[0].Pos.Y == chicken.Pos.Y)
-            {
-                //Пищевая ценность курицы равняется 3м яблокам!
-                for (int i = 0; i < 3; i++)
+                //Проверяем наличие столкновения с едой
+                if (snake[0].Pos.X == apples[i].Pos.X && snake[0].Pos.Y == apples[i].Pos.Y)
                 {
+                    //Кушаем
                     Eat();
+
+                    //Проигрываем звук съеденного яблока
+                    PlaySound(appleCrunch);
+
+                    //Создаем новый кусок еды
+                    apples[i] = GenerateFood();
                 }
-
-                //Проигрываем звук умирающей курицы
-                PlaySound(chickenScream);
-
-                //Создаем новую курицу
-                chicken = GenerateFood();
+                
             }
+
+            //Пробегаемся по списку куриц
+            for (int i = 0; i < chickens.Count; i++)
+            {
+                if (snake[0].Pos.X == chickens[i].Pos.X && snake[0].Pos.Y == chickens[i].Pos.Y)
+                {
+                    //Пищевая ценность курицы равняется 3м яблокам!
+                    for (int j = 0; j < 3; j++)
+                    {
+                        Eat();
+                    }
+
+                    //Проигрываем звук умирающей курицы
+                    PlaySound(chickenScream);
+
+                    //Создаем новую курицу
+                    chickens[i] = GenerateFood();
+                }
+            }
+
         }
 
         //Просто пачка переменных для хранения информации о гипотетическом курином шаге
@@ -784,17 +864,17 @@ namespace Maxx53.Games
         }
         
         //Двигаем курицу
-        private void MoveChicken()
+        private void MoveChicken(GameObject chick)
         {
             //Объявляем список 
             var posPoints = new List<ChickInfo>();
 
             //Набиваем массив точек четярьмя возможными точками для новой позиции
             Point[] plist = new Point[4];
-            plist[0] = new Point(chicken.Pos.X, chicken.Pos.Y + 1);
-            plist[1] = new Point(chicken.Pos.X - 1, chicken.Pos.Y);
-            plist[2] = new Point(chicken.Pos.X + 1, chicken.Pos.Y);
-            plist[3] = new Point(chicken.Pos.X, chicken.Pos.Y - 1);
+            plist[0] = new Point(chick.Pos.X, chick.Pos.Y + 1);
+            plist[1] = new Point(chick.Pos.X - 1, chick.Pos.Y);
+            plist[2] = new Point(chick.Pos.X + 1, chick.Pos.Y);
+            plist[3] = new Point(chick.Pos.X, chick.Pos.Y - 1);
 
             //Проверяем в цикле, возможность "встать" в новую точку
             for (int i = 0; i < 4; i++)
@@ -842,7 +922,7 @@ namespace Maxx53.Games
                         }
 
                         //Переставляем курицу
-                        ChickStep(posPoints);
+                        ChickStep(posPoints, chick);
                         return;
                     }
                 }
@@ -853,7 +933,7 @@ namespace Maxx53.Games
                     if (random.Next(100) < 10)
                     {
                         //Переставляем курицу
-                        ChickStep(posPoints);
+                        ChickStep(posPoints, chick);
                         return;
                     }
                 }
@@ -863,18 +943,18 @@ namespace Maxx53.Games
             //Будто оглядывается по сторонам
             if (random.Next(100) < 20)
             {
-                chicken.imgIndex = random.Next(4);
+                chick.imgIndex = random.Next(4);
             }
         }
 
         //Метод для перестановки курицы слуайную возможную позицию
-        private void ChickStep(List<ChickInfo> posPoints)
+        private void ChickStep(List<ChickInfo> posPoints, GameObject chick)
         {
             var rand = posPoints[random.Next(posPoints.Count)];
             //Определяем позицию объекта
-            chicken.Pos = rand.pos;
+            chick.Pos = rand.pos;
             //Присваиваем текстуру, соответствующую направлению движения
-            chicken.imgIndex = rand.index;
+            chick.imgIndex = rand.index;
         }
 
         //Проверка, находится ли точка в пределах игрового поля
@@ -1013,12 +1093,18 @@ namespace Maxx53.Games
                 g.DrawImage(snakeTexList[snake[i].imgIndex], snake[i].imgPos);
             }
 
-            //Рисуем текстуру еды
-            g.DrawImage(appleImg, apple.imgPos);
+            //Рисуем текстуры яблок
+            for (int i = 0; i < apples.Count; i++)
+            {
+                g.DrawImage(appleImg, apples[i].imgPos);
+            }
 
-            //Рисуем текстуру курицы
-            //Изображение хватаем из списка 
-            g.DrawImage(chickenTexList[chicken.imgIndex], chicken.imgPos);
+            //Рисуем текстуры куриц
+            for (int i = 0; i < chickens.Count; i++)
+            {
+                //Изображение хватаем из списка 
+                g.DrawImage(chickenTexList[chickens[i].imgIndex], chickens[i].imgPos);
+            }
 
             //Рисуем очки
             g.DrawString("Очки: " + gameScore.ToString(), drawFont, Brushes.White, screenCenter.X, PixelLen, sf);
@@ -1059,9 +1145,17 @@ namespace Maxx53.Games
                     FlatHead();
                 }
 
-                //Перерасчет координат текстур яблока и курицы
-                chicken.CalculateImagePos();
-                apple.CalculateImagePos();
+                //Перерасчет координат текстур яблок и куриц
+
+                for (int i = 0; i < chickens.Count; i++)
+                {
+                    chickens[i].CalculateImagePos();
+                }
+
+                for (int i = 0; i < apples.Count; i++)
+                {
+                    apples[i].CalculateImagePos();
+                }
 
                 //Перерисовка камней на заднем фоне
                 DrawLevel();

@@ -55,6 +55,12 @@ namespace MiloSnake
             //Выставляем скорость игры
             snake.GameSpeed = (int)numericUpDown2.Value;
 
+            //Выставляем количество яблок на поле
+            snake.AppleCount = (int)numericUpDown3.Value;
+
+            //Выставляем количество куриц на поле
+            snake.ChickCount = (int)numericUpDown4.Value;
+
             //Проигрывать звуковые эффекты
             snake.Mute = checkBox1.Checked;
 
