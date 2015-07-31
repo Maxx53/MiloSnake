@@ -95,5 +95,25 @@ namespace MiloSnake
             CenterPanel();
         }
 
+        private void button2_Click(object sender, EventArgs e)
+        {
+            //Прячем контролы
+            panel1.Visible = false;
+
+            //Фокусируемся на форме
+            this.Focus();
+
+            //Рекомендуемый размер
+            if (checkBox2.Checked)
+            {
+                //Задаем размер, центрируем форму
+                this.ClientSize = new System.Drawing.Size(800, 600);
+                this.WindowState = FormWindowState.Normal;
+                this.CenterToScreen();
+            }
+
+            snake.RunEditor();
+        }
+
     }
 }

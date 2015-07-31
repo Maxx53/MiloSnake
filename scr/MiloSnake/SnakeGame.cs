@@ -309,6 +309,11 @@ namespace Maxx53.Games
                 canvas.KeyDown += new KeyEventHandler(canvas_KeyDown);
                 canvas.KeyUp += new KeyEventHandler(canvas_KeyUp);
                 canvas.Resize += new EventHandler(canvas_Resize);
+                canvas.MouseDown +=new MouseEventHandler(canvas_MouseDown);
+                canvas.MouseMove += new MouseEventHandler(canvas_MouseMove);
+                canvas.MouseUp += new MouseEventHandler(canvas_MouseUp);
+
+                InitMenuStrip();
 
                 //Определяем интервал игрового таймера и событие на тик (обновление позиции змейки)
                 //Интервал определяет скорость змейки. Чем он выше, тем змейка медленее двигается
@@ -335,6 +340,36 @@ namespace Maxx53.Games
             }
         }
 
+        private void InitMenuStrip()
+        {
+            MenuStrip ms = new MenuStrip();
+            ms.Visible = false;
+            ms.Name = "ms";
+            canvas.Controls.Add(ms);
+
+            var fileStrip = new ToolStripMenuItem("Файл");
+
+            var saveAs = new ToolStripMenuItem("Сохранить как...");
+            saveAs.ShortcutKeys = Keys.Control | Keys.S;
+            saveAs.Click += new EventHandler(saveAs_Click);
+            var backToScr = new ToolStripMenuItem("Выход");
+            backToScr.ShortcutKeys = Keys.Control | Keys.B;
+            backToScr.Click += new EventHandler(backToScr_Click);
+            fileStrip.DropDownItems.Add(saveAs);
+            fileStrip.DropDownItems.Add(backToScr);
+
+
+            var editStrip = new ToolStripMenuItem("Правка");
+            var clearField = new ToolStripMenuItem("Очистить поле");
+            clearField.ShortcutKeys = Keys.Control | Keys.C;
+            clearField.Click += new EventHandler(clearField_Click);
+            editStrip.DropDownItems.Add(clearField);
+
+
+            ms.Items.Add(fileStrip);
+            ms.Items.Add(editStrip);
+
+        }
 
         //Загружаем левелы из ресурсов в список строк
         private void OpenLevelFiles()
@@ -378,7 +413,7 @@ namespace Maxx53.Games
             InitGameField();
 
             //Запускаем игру
-            StartGame(level);
+            StartGame(level, false);
         }
 
         //Инициализация игрового поля
@@ -527,19 +562,22 @@ namespace Maxx53.Games
         }
 
         //Запуск игры
-        private void StartGame(int levNum)
+        private void StartGame(int levNum, bool skipLoad)
         {
             //Т.к. данный метод вызывается и после смерти змейки, надо возвращать все значения в дефолт (по умолчанию).
             gameOver = false;
             direction = Direction.Down;
             gameScore = 0;
+
+            if (!skipLoad)
             //Чистим список от точек
             snake.Clear();
             apples.Clear();
             chickens.Clear();
 
+            if (!skipLoad)
             //Загружаем список камней из уровня, добавляем змейку на стартовую позицию
-            LoadLevel(levNum);
+            ParseLevel(levNum);
 
             //Рисуем фон с камнями из левела
             DrawLevel();
@@ -562,7 +600,7 @@ namespace Maxx53.Games
         }
 
         //Загружаем камни из уровня
-        private void LoadLevel(int levNum)
+        private void ParseLevel(int levNum)
         {
             //Для начала загрузим из левела список камней
 
@@ -606,7 +644,7 @@ namespace Maxx53.Games
                         //Первое изображение в списке текстур - голова, повернутая вниз
                         snake.Add(new SnakeSegment(xPos, yPos, 0, direction));
                         //Восьмое изображение в списке - хвост, смотрящий назад
-                        snake.Add(new SnakeSegment(xPos, yPos - 1, 0, direction));
+                        snake.Add(new SnakeSegment(xPos, yPos - 1, 8, direction));
                         
                         //Двигаем координату Х на единицу
                         xPos++;
@@ -628,6 +666,37 @@ namespace Maxx53.Games
             }
             
             //Камни загружены из левела, теперь можно их нарисовать!
+        }
+
+        private void SaveLevel()
+        {
+            string levelstr = string.Empty;
+
+            char[,] arr = new char[bounds.Width, bounds.Height];
+            
+            for (int i = 0; i < rocks.Count; i++)
+            {
+                arr[rocks[i].Pos.X, rocks[i].Pos.Y] = '#';
+            }
+
+            arr[snake[0].Pos.X, snake[0].Pos.Y] = '@';
+            arr[snake[1].Pos.X, snake[1].Pos.Y] = '@';
+
+
+            for (int i = 0; i < arr.GetLength(0); i++)
+            {
+                for (int j = 0; j < arr.GetLength(1); j++)
+                {
+
+                    if (arr[i, j] == '\0')
+                        levelstr += '0';
+
+                
+                }
+                levelstr += Environment.NewLine;
+            }
+
+            File.WriteAllText("123.txt", levelstr);
         }
 
         private void DrawLevel()
@@ -1071,49 +1140,67 @@ namespace Maxx53.Games
         //Если есть желание запарится, можно использовать враппер https://github.com/svejdo1/CachedBitmap
         private void canvas_Paint(object sender, PaintEventArgs e)
         {
-            //Если список змейки пустой, ничего рисовать не надо.
-            if (snake.Count == 0) 
-                return;
+            if (!GameShowed) return;
 
             Graphics g = e.Graphics;
-
-            //Включаем сглаживание шрифтов для рисования текста
-            g.TextRenderingHint = TextRenderingHint.AntiAlias;
 
             //Сдвигаем начало координат для смещения области отрисовки в центр формы
             g.TranslateTransform(transform.X, transform.Y);
 
-            //Рисуем фон (трава с камнями)
-            g.DrawImage(background, 0, 0);  
-
-            //Рисуем текстуры сегментов змейки
-            for (int i = snake.Count - 1; i >= 0; i--)
+            if (isEditor)
             {
-                //Изображение хватаем из списка, по номеру который хранится в поле класса imgIndex
-                g.DrawImage(snakeTexList[snake[i].imgIndex], snake[i].imgPos);
+                g.DrawImage(background, 0, 0);
+
+                //Пробегаемся по списку камней и рисуем каждый в своей позиции
+                for (int i = 0; i < rocks.Count; i++)
+                {
+                    g.DrawImage(rocksTexList[0], rocks[i].imgPos);
+                }
+
+                if (snake.Count == 2)
+                {
+                    g.DrawImage(snakeTexList[snake[0].imgIndex], snake[0].imgPos);
+                    g.DrawImage(snakeTexList[snake[1].imgIndex], snake[1].imgPos);
+                }
             }
-
-            //Рисуем текстуры яблок
-            for (int i = 0; i < apples.Count; i++)
+            else
             {
-                g.DrawImage(appleImg, apples[i].imgPos);
-            }
+                //Включаем сглаживание шрифтов для рисования текста
+                g.TextRenderingHint = TextRenderingHint.AntiAlias;
 
-            //Рисуем текстуры куриц
-            for (int i = 0; i < chickens.Count; i++)
-            {
-                //Изображение хватаем из списка 
-                g.DrawImage(chickenTexList[chickens[i].imgIndex], chickens[i].imgPos);
-            }
+                //Рисуем фон (трава с камнями)
+                g.DrawImage(background, 0, 0);
 
-            //Рисуем очки
-            g.DrawString("Очки: " + gameScore.ToString(), drawFont, Brushes.White, screenCenter.X, PixelLen, sf);
+                //Рисуем текстуры сегментов змейки
+                for (int i = snake.Count - 1; i >= 0; i--)
+                {
+                    //Изображение хватаем из списка, по номеру который хранится в поле класса imgIndex
+                    g.DrawImage(snakeTexList[snake[i].imgIndex], snake[i].imgPos);
+                }
 
-            if (gameOver)
-            {
-                //Если змейка мертва, надо оповестить об этом игрока
-                //Рисуем надпись
-                g.DrawString(overText + Environment.NewLine + infoText, drawFont, Brushes.White, screenCenter.X, screenCenter.Y, sf);
+                //Рисуем текстуры яблок
+                for (int i = 0; i < apples.Count; i++)
+                {
+                    g.DrawImage(appleImg, apples[i].imgPos);
+                }
+
+                //Рисуем текстуры куриц
+                for (int i = 0; i < chickens.Count; i++)
+                {
+                    //Изображение хватаем из списка 
+                    g.DrawImage(chickenTexList[chickens[i].imgIndex], chickens[i].imgPos);
+                }
+
+                //Рисуем очки
+                g.DrawString("Очки: " + gameScore.ToString(), drawFont, Brushes.White, screenCenter.X, PixelLen, sf);
+
+                if (gameOver)
+                {
+                    //Если змейка мертва, надо оповестить об этом игрока
+                    //Рисуем надпись
+                    g.DrawString(overText + Environment.NewLine + infoText, drawFont, Brushes.White, screenCenter.X, screenCenter.Y, sf);
+                }
+
             }
 
         }
@@ -1200,7 +1287,7 @@ namespace Maxx53.Games
                 //На R начинаем игру заново
                 case Keys.R:
                     gameTimer.Stop();
-                    StartGame(0);
+                    StartGame(0,false);
                     break;
 
                 //По пробелу ускоряем игру до скорости 20
@@ -1208,12 +1295,19 @@ namespace Maxx53.Games
                         gameTimer.Interval = 50;
                     break;
 
+                case Keys.Enter:
+                    if (isEditor)
+                    {
+                        isEditor = false;
+                        StartGame(0, true);
+                    }
+                    break;
+
                 //На Esc вызываем событие
                 case Keys.Escape:
                     //Если умерли
                     if (gameOver)
                     {
-                        snake.Clear();
                         if (PressEsc != null)
                         {
                             GameShowed = false;
@@ -1236,6 +1330,138 @@ namespace Maxx53.Games
         }
 
         #endregion
+
+        private bool isEditor = false;
+        private bool isZalip = false;
+
+        private void backToScr_Click(object sender, EventArgs e)
+        {
+            if (PressEsc != null)
+            {
+                GameShowed = false;
+                PressEsc(this, e);
+            }
+        }
+
+        private void clearField_Click(object sender, EventArgs e)
+        {
+            if (PressEsc != null)
+            {
+                GameShowed = false;
+                PressEsc(this, e);
+            }
+        }
+
+        private void saveAs_Click(object sender, EventArgs e)
+        {
+            if (PressEsc != null)
+            {
+                GameShowed = false;
+                PressEsc(this, e);
+            }
+        }
+
+        public void RunEditor()
+        {
+            GameShowed = true;
+
+            rocks.Clear();
+            InitGameField();
+
+            canvas.Controls["ms"].Visible = true;
+
+            var msH = canvas.Controls["ms"].Height;
+            
+            canvas.ClientSize = new Size(canvas.ClientSize.Width, canvas.ClientSize.Height + msH);
+            transform = new Point(transform.X, transform.Y + msH);
+            //Меняем размер фона в соответствии с размером клиентской области формы
+            background = Utils.ResizeImage(grassImg, realSize.Width, realSize.Height);
+
+            //Рисуем вспомогательную сетку
+            using (var g = Graphics.FromImage(background))
+            {
+                //Полупрозрачная красная ручка
+                Pen p2 = new Pen(Color.FromArgb(100, Color.Red));
+
+                //Пробегаемся по ширине и высоте, рисуем линии через пиксель
+                for (int i = 1; i < bounds.Width; i++)
+                {
+                    g.DrawLine(p2, i * pixelLen, 0, i * pixelLen, realSize.Height);
+                }
+
+                for (int i = 1; i < bounds.Height; i++)
+                {
+                    g.DrawLine(p2, 0, i * pixelLen, realSize.Width, i * pixelLen);
+                }
+            }
+
+            
+
+            isEditor = true;
+            canvas.Invalidate();
+        }
+
+        private void canvas_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isEditor)
+            {
+                if (isZalip)
+                {
+                    EditRocks(e);
+
+                }
+            
+            }
+
+        }
+
+        private void canvas_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (isEditor)
+            {
+                isZalip = false;
+            }
+        }
+
+        private void EditRocks(MouseEventArgs e)
+        {
+            var virtPt = new Point(e.X / pixelLen, e.Y / pixelLen);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                if (!checkRocks(virtPt))
+                {
+                    rocks.Add(new GameObject(virtPt.X, virtPt.Y, 0));
+                }
+            }
+            else
+                if (e.Button == MouseButtons.Right)
+                {
+                    if (checkRocks(virtPt))
+                    {
+                        //Motherphuckin LINQ!!!
+                        rocks.RemoveAll((x) => x.Pos == virtPt);
+                    }
+                }
+                else if (e.Button == MouseButtons.Middle)
+                {
+                    snake.Clear();
+                    snake.Add(new SnakeSegment(virtPt.X, virtPt.Y, 0, Direction.Down));
+                    snake.Add(new SnakeSegment(virtPt.X, virtPt.Y - 1, 8, Direction.Down));
+                }
+            canvas.Invalidate();
+         
+        }
+
+        private void canvas_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (isEditor)
+            {
+                EditRocks(e);
+                isZalip = true;
+   
+            }
+        }
     }
 
     class Utils
