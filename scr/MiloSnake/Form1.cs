@@ -26,13 +26,42 @@ namespace MiloSnake
             //Добавляем событие на нажатие Esc
             snake.PressEsc += new SnakeGame.EscPressHandler(snake_PressEsc);
 
-            //Ограничиваем нумерик по количеству загруженных уровней
-            numericUpDown1.Maximum = snake.LevelCount;
+            UpdateLevelBox();
+
+        }
+
+
+        private void UpdateLevelBox()
+        {
+            comboBox1.Items.Clear();
+            comboBox1.Items.Add("Случайный");
+
+            for (int i = 0; i < snake.levels.Count; i++)
+            {
+                comboBox1.Items.Add(System.IO.Path.GetFileName(snake.levels[i]));
+            }
+
+            if (snake.levels.Count != 0)
+                comboBox1.SelectedIndex = 0;
+        }
+
+        private void SetRecommendedSize()
+        {
+            //Рекомендуемый размер
+            if (checkBox2.Checked)
+            {
+                //Задаем размер, центрируем форму
+                this.ClientSize = new System.Drawing.Size(800, 600);
+                this.WindowState = FormWindowState.Normal;
+                this.CenterToScreen();
+            }
         }
 
         //Обрабатываем событие
         private void snake_PressEsc(object sg, EventArgs e)
         {
+            UpdateLevelBox();
+
             //Показываем панель с контролами
             panel1.Visible = true;
 
@@ -64,18 +93,11 @@ namespace MiloSnake
             //Проигрывать звуковые эффекты
             snake.Mute = checkBox1.Checked;
 
-            //Рекомендуемый размер
-            if (checkBox2.Checked)
-            {
-                //Задаем размер, центрируем форму
-                this.ClientSize = new System.Drawing.Size(800, 600);
-                this.WindowState = FormWindowState.Normal;
-                this.CenterToScreen();
-            }
+            SetRecommendedSize();
 
             //Запускаем игру с номером левела
             //Ноль для случайного левела
-            snake.StartNewGame((int)numericUpDown1.Value);
+            snake.StartNewGame(comboBox1.SelectedIndex - 1);
 
         }
 
@@ -103,16 +125,14 @@ namespace MiloSnake
             //Фокусируемся на форме
             this.Focus();
 
-            //Рекомендуемый размер
-            if (checkBox2.Checked)
-            {
-                //Задаем размер, центрируем форму
-                this.ClientSize = new System.Drawing.Size(800, 600);
-                this.WindowState = FormWindowState.Normal;
-                this.CenterToScreen();
-            }
+            SetRecommendedSize();
 
-            snake.RunEditor();
+            snake.RunEditor(comboBox1.SelectedIndex - 1, true);
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/Maxx53/MiloSnake#Управление");
         }
 
     }
